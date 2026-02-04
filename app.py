@@ -14,10 +14,14 @@ app = Flask(__name__)
 # --------------------------------------------------
 mongo_uri = os.getenv("MONGO_URI")
 
-
-client = MongoClient(mongo_uri)
-db = client.assignment_db
-users_collection = db.users
+print('MONGO', mongo_uri)
+try:
+    client = MongoClient(mongo_uri)
+    db = client.assignment_db
+    users_collection = db.users
+except Exception as e:
+    print(e)
+    users_collection = None
 
 
 # --------------------------------------------------
@@ -28,10 +32,13 @@ def api_data():
     """
     Reads data from backend JSON file and returns it as API response
     """
-    with open("data.json", "r") as file:
-        data = json.load(file)
+    try:
+        with open("data.json", "r") as file:
+            data = json.load(file)
 
-    return jsonify(data)
+        return jsonify(data)
+    except:
+        return jsonify({"error": "data.json not found"}), 404
 
 
 # --------------------------------------------------
@@ -47,6 +54,9 @@ def home():
 # --------------------------------------------------
 @app.route("/submit", methods=["POST"])
 def submit():
+    if users_collection is None:
+        return render_template("index.html", error="Database connection failed")
+    
     name = request.form.get("name")
     email = request.form.get("email")
 
@@ -61,7 +71,8 @@ def submit():
         return redirect(url_for("success"))
 
     except Exception as e:
-        return render_template("index.html", error=str(e))
+        print(e)
+        return render_template("index.html", error="Something went wrong!")
 
 
 # --------------------------------------------------
@@ -76,4 +87,4 @@ def success():
 # Run Application
 # --------------------------------------------------
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.getenv('APP_DEBUG', "False") == "True")
